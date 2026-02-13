@@ -1,28 +1,47 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  Calculator, TrendingUp, PieChart, ArrowUpRight, 
-  ShieldCheck, Info, Target, Landmark, Download, Eye, Wallet, Clock 
+  Calculator, TrendingUp, PieChart, ShieldCheck, 
+  Target, Landmark, Wallet, Clock, ArrowRightLeft, Coins
 } from 'lucide-react';
 
 const App = () => {
-  // Existing States
-  const [monthlyInvest, setMonthlyInvest] = useState(10000);
+  // core inputs
+  const [monthlyInvest, setMonthlyInvest] = useState(5000);
   const [tenure, setTenure] = useState(20);
   const [stepUp, setStepUp] = useState(10);
   const [age, setAge] = useState(30);
   const [riskProfile, setRiskProfile] = useState('moderate');
-  
-  // SWP States
-  const [monthlyWithdrawal, setMonthlyWithdrawal] = useState(50000);
+  const [monthlyWithdrawal, setMonthlyWithdrawal] = useState(30000);
 
   const riskConfig = {
-    conservative: { cagr: 8, funds: ["SBI Bluechip", "HDFC Corp Bond"], color: "text-blue-600" },
-    moderate: { cagr: 12, funds: ["Parag Parikh Flexi Cap", "Nifty 50 Index"], color: "text-emerald-600" },
-    aggressive: { cagr: 15, funds: ["Quant Small Cap", "Nippon Growth"], color: "text-purple-600" }
+    conservative: { 
+      cagr: 8, 
+      split: [
+        { cat: "Liquid/Debt Funds", pc: 50, color: "bg-slate-400" },
+        { cat: "Large Cap Index", pc: 35, color: "bg-blue-500" },
+        { cat: "Gold Funds", pc: 15, color: "bg-yellow-500" }
+      ]
+    },
+    moderate: { 
+      cagr: 12, 
+      split: [
+        { cat: "Flexi-cap Funds", pc: 50, color: "bg-emerald-500" },
+        { cat: "Nifty 50 Index", pc: 30, color: "bg-blue-600" },
+        { cat: "Dynamic Bond Funds", pc: 20, color: "bg-slate-500" }
+      ]
+    },
+    aggressive: { 
+      cagr: 15, 
+      split: [
+        { cat: "Small Cap Funds", pc: 40, color: "bg-purple-600" },
+        { cat: "Mid Cap Funds", pc: 40, color: "bg-indigo-600" },
+        { cat: "Nasdaq 100/Tech", pc: 20, color: "bg-pink-600" }
+      ]
+    }
   };
 
   const results = useMemo(() => {
-    // 1. Accumulation Phase (SIP)
+    // Accumulation Phase
     let totalInvested = 0;
     let maturityValue = 0;
     let currentSIP = monthlyInvest;
@@ -42,14 +61,11 @@ const App = () => {
     const tax = Math.max(0, gains - 125000) * 0.125;
     const postTaxWealth = maturityValue - tax;
     
-    // 2. Withdrawal Phase (SWP)
-    // We assume a more conservative 8% return during withdrawal phase for safety
+    // SWP logic
     const swpRate = 0.08 / 12; 
     let monthsLasted = 0;
     let tempCorpus = postTaxWealth;
-    
-    // Calculate how many months the fund lasts
-    while (tempCorpus >= monthlyWithdrawal && monthsLasted < 600) { // Cap at 50 years
+    while (tempCorpus >= monthlyWithdrawal && monthsLasted < 600) {
       tempCorpus = (tempCorpus * (1 + swpRate)) - monthlyWithdrawal;
       monthsLasted++;
     }
@@ -59,136 +75,145 @@ const App = () => {
       preTaxNetWorth: Math.round(maturityValue),
       tax: Math.round(tax),
       postTaxWealth: Math.round(postTaxWealth),
-      swpMonths: monthsLasted,
       swpYears: (monthsLasted / 12).toFixed(1),
-      isPerpetual: monthsLasted >= 600
+      isPerpetual: monthsLasted >= 600,
+      fundSplit: riskConfig[riskProfile].split.map(s => ({
+        ...s,
+        amt: Math.round((monthlyInvest * s.pc) / 100)
+      }))
     };
   }, [monthlyInvest, tenure, stepUp, riskProfile, monthlyWithdrawal]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-3">
-            <Landmark className="text-blue-600" size={32} />
-            <h1 className="text-2xl font-bold tracking-tight">FinConsult 2026</h1>
-          </div>
+        <header className="flex items-center gap-3 mb-10">
+          <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg"><Landmark size={28} /></div>
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">FinConsult <span className="text-blue-600">Pro</span></h1>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: SIP & Risk Config */}
+          
+          {/* Column 1: Core Inputs & Profile */}
           <div className="lg:col-span-4 space-y-6">
             <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-              <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Calculator size={20} className="text-blue-600" /> SIP Phase
+              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <ShieldCheck size={18} className="text-blue-600" /> User Profile
               </h2>
-              <div className="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-2xl mb-6">
-                {Object.keys(riskConfig).map((profile) => (
-                  <button key={profile} onClick={() => setRiskProfile(profile)}
-                    className={`py-2 px-1 rounded-xl text-[10px] font-bold uppercase transition-all ${
-                      riskProfile === profile ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'
-                    }`}>{profile}</button>
-                ))}
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Current Age</label>
+                    <input type="number" value={age} onChange={(e)=>setAge(Number(e.target.value))} className="w-full bg-transparent font-bold text-lg outline-none" />
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">SIP Duration</label>
+                    <input type="number" value={tenure} onChange={(e)=>setTenure(Number(e.target.value))} className="w-full bg-transparent font-bold text-lg outline-none" />
+                  </div>
+                </div>
+                <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl">
+                  {['conservative', 'moderate', 'aggressive'].map((p) => (
+                    <button key={p} onClick={() => setRiskProfile(p)}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-bold uppercase transition-all ${
+                        riskProfile === p ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'
+                      }`}>{p}</button>
+                  ))}
+                </div>
               </div>
+            </section>
+
+            <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <Calculator size={18} className="text-emerald-600" /> SIP Configuration
+              </h2>
               <div className="space-y-6">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-2">Monthly SIP: ₹{monthlyInvest.toLocaleString('en-IN')}</label>
-                  <input type="range" min="5000" max="200000" step="5000" value={monthlyInvest} onChange={(e)=>setMonthlyInvest(Number(e.target.value))} className="w-full accent-blue-600" />
+                  <div className="flex justify-between mb-2"><span className="text-xs font-bold">Monthly Capacity</span><span className="font-bold text-blue-600">₹{monthlyInvest.toLocaleString('en-IN')}</span></div>
+                  <input type="range" min="1000" max="100000" step="1000" value={monthlyInvest} onChange={(e)=>setMonthlyInvest(Number(e.target.value))} className="w-full accent-blue-600" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-2">Annual Step-Up: {stepUp}%</label>
+                  <div className="flex justify-between mb-2"><span className="text-xs font-bold">Annual Step-Up</span><span className="font-bold text-emerald-600">{stepUp}%</span></div>
                   <input type="range" min="0" max="20" value={stepUp} onChange={(e)=>setStepUp(Number(e.target.value))} className="w-full accent-emerald-500" />
                 </div>
               </div>
             </section>
+          </div>
 
-            {/* SWP Input Card */}
-            <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm ring-2 ring-blue-50">
-              <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Wallet size={20} className="text-indigo-600" /> Withdrawal Phase
+          {/* Column 2: Diversification & Split */}
+          <div className="lg:col-span-4 space-y-6">
+            <section className="bg-slate-900 p-6 rounded-3xl text-white shadow-xl h-full">
+              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <ArrowRightLeft size={18} className="text-blue-400" /> Investment Split
               </h2>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-2">Desired Monthly Withdrawal</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-black text-slate-800">₹</span>
-                    <input 
-                      type="number" 
-                      value={monthlyWithdrawal} 
-                      onChange={(e) => setMonthlyWithdrawal(Number(e.target.value))}
-                      className="w-full text-xl font-black text-slate-800 bg-transparent outline-none border-b-2 border-slate-100 focus:border-indigo-500 transition-all"
-                    />
+              
+              <div className="space-y-5">
+                {results.fundSplit.map((item, i) => (
+                  <div key={i} className="group">
+                    <div className="flex justify-between items-end mb-2">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">{item.cat}</p>
+                        <p className="text-sm font-bold group-hover:text-blue-400 transition-colors">₹{item.amt.toLocaleString('en-IN')}/mo</p>
+                      </div>
+                      <span className="text-xs font-black opacity-40">{item.pc}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                      <div className={`h-full ${item.color}`} style={{ width: `${item.pc}%` }}></div>
+                    </div>
                   </div>
-                  <input type="range" min="10000" max="500000" step="5000" value={monthlyWithdrawal} onChange={(e)=>setMonthlyWithdrawal(Number(e.target.value))} className="w-full mt-4 accent-indigo-600" />
+                ))}
+              </div>
+
+              <div className="mt-10 p-4 bg-white/5 rounded-2xl border border-white/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <Coins className="text-yellow-500" size={20}/>
+                  <p className="text-xs font-bold">Why this split?</p>
                 </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                  Based on your {riskProfile} profile, we've optimized for {riskConfig[riskProfile].cagr}% CAGR. 
+                  {age > 45 ? " We've increased debt weightage to protect your capital as you near the withdrawal phase." : " We've maximized equity exposure to leverage compounding time."}
+                </p>
               </div>
             </section>
           </div>
 
-          {/* Center Column: Maturity & Tax */}
+          {/* Column 3: Wealth & SWP Results */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-              <h2 className="text-lg font-bold mb-6 flex items-center gap-2"><Target className="text-emerald-600" /> Results</h2>
+            <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <Target size={18} className="text-blue-600" /> Wealth Projection
+              </h2>
               <div className="space-y-4">
-                <div className="p-4 bg-slate-50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Invested Principal</p>
-                  <p className="text-xl font-bold text-slate-700">₹{results.invested.toLocaleString('en-IN')}</p>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-xs text-slate-500">Maturity Age</span>
+                  <span className="text-xs font-bold">{age + tenure} Years</span>
                 </div>
-                <div className="p-4 bg-blue-50/50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-blue-400 uppercase">Gross Net Worth</p>
-                  <p className="text-xl font-bold text-blue-900">₹{results.preTaxNetWorth.toLocaleString('en-IN')}</p>
+                <div className="flex justify-between border-b border-slate-50 pb-2">
+                  <span className="text-xs text-slate-500">Gross Value</span>
+                  <span className="text-xs font-bold">₹{results.preTaxNetWorth.toLocaleString('en-IN')}</span>
                 </div>
-                <div className="flex justify-between items-center px-2 text-red-500">
-                  <span className="text-xs font-bold uppercase">LTCG Tax</span>
-                  <span className="font-black">- ₹{results.tax.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="bg-slate-900 p-6 rounded-2xl text-white text-center">
-                  <p className="text-xs font-bold opacity-60 uppercase mb-1">Post-Tax Corpus</p>
-                  <p className="text-3xl font-black">₹{results.postTaxWealth.toLocaleString('en-IN')}</p>
+                <div className="flex justify-between items-center bg-blue-600 p-4 rounded-2xl text-white shadow-lg">
+                  <span className="text-xs font-bold uppercase opacity-80">Post-Tax</span>
+                  <span className="text-2xl font-black">₹{results.postTaxWealth.toLocaleString('en-IN')}</span>
                 </div>
               </div>
-            </div>
-          </div>
+            </section>
 
-          {/* Right Column: SWP Sustainability */}
-          <div className="lg:col-span-4">
-            <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-8 rounded-3xl text-white shadow-xl h-full flex flex-col">
-              <div className="flex items-center gap-2 mb-8">
-                <Clock className="text-indigo-200" />
-                <h2 className="text-xl font-bold">SWP Sustainability</h2>
-              </div>
-              
-              <div className="flex-1 space-y-10">
-                <div className="text-center">
-                  <p className="text-indigo-100 text-xs uppercase font-bold tracking-widest mb-2">Your fund will last</p>
-                  {results.isPerpetual ? (
-                    <p className="text-5xl font-black">Forever ∞</p>
-                  ) : (
-                    <p className="text-5xl font-black">{results.swpYears} <span className="text-xl">Years</span></p>
-                  )}
+            <section className="bg-indigo-600 p-6 rounded-3xl text-white shadow-xl">
+              <h2 className="text-sm font-bold text-indigo-200 uppercase tracking-widest mb-6 flex items-center gap-2">
+                <Wallet size={18} /> Retirement SWP
+              </h2>
+              <div className="space-y-6">
+                <div>
+                  <label className="text-[10px] font-bold uppercase opacity-70 block mb-2">Desired Monthly Payout</label>
+                  <input type="number" value={monthlyWithdrawal} onChange={(e)=>setMonthlyWithdrawal(Number(e.target.value))} 
+                    className="w-full bg-indigo-700/50 p-3 rounded-xl outline-none font-black text-xl border border-indigo-500/50 mb-4" />
                 </div>
-
-                <div className="space-y-4">
-                  <div className="bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-                    <p className="text-[10px] uppercase font-bold opacity-70 mb-1">Monthly Payout</p>
-                    <p className="text-xl font-bold">₹{monthlyWithdrawal.toLocaleString('en-IN')}</p>
-                  </div>
-                  
-                  <div className="bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-                    <p className="text-[10px] uppercase font-bold opacity-70 mb-1">Status at Age {age + tenure + parseFloat(results.swpYears)}</p>
-                    <p className="text-sm font-medium">
-                      {results.isPerpetual 
-                        ? "Your withdrawal rate is lower than your growth rate. Wealth will grow indefinitely."
-                        : `Your corpus will be fully utilized. Consider reducing withdrawal to ₹${Math.round(results.postTaxWealth * 0.005).toLocaleString('en-IN')} for perpetuity.`}
-                    </p>
-                  </div>
+                <div className="text-center p-4 bg-white/10 rounded-2xl backdrop-blur-md">
+                  <p className="text-[10px] font-bold uppercase opacity-70 mb-1">Fund Sustainability</p>
+                  <p className="text-3xl font-black">{results.isPerpetual ? "Forever ∞" : `${results.swpYears} Years`}</p>
                 </div>
               </div>
-
-              <div className="mt-8 pt-6 border-t border-white/10 text-[10px] opacity-60 italic leading-relaxed">
-                *SWP phase assumes a conservative 8% post-retirement yield.
-              </div>
-            </div>
+            </section>
           </div>
         </div>
       </div>
