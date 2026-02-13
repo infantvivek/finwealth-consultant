@@ -1,1 +1,1 @@
-# inwealth-consultant
+# finwealth-consultant
